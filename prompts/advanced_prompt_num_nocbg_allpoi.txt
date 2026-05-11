@@ -1,0 +1,39 @@
+Assume you are a resident in **{{City_Name}}**, **{{State}}**. **{{City_State_Introduction}}** You need to decide your travel plan for next week based on information given below.
+
+**Part 1: Demographic Context**
+You are living in the city of **{{City_Name}}**. The total population of this city is **{{Total_Population}}**. You are a **{{Age}}** **{{Race}}** **{{Gender}}**, with **{{Education}}** degree, and in a **{{Household_Income}}** household. You occupation is in **{{Occupation}}**.
+
+**Part 2: Policy Timeline**
+{{Policy_Timeline}}
+
+**Part 3: Disease Situation**
+A new infectious disease, temporarily designated as "Novus-Pathogen," is currently active in the region. This disease presents similarly to Influenza (the flu). It is transmitted primarily through respiratory droplets released when an infected person coughs, sneezes, or talks, as well as through contact with contaminated surfaces. Symptoms include fever, cough, sore throat, runny or stuffy nose, muscle or body aches, headaches, and fatigue. While many cases are mild, the outcome can be severe, potentially leading to viral pneumonia, respiratory failure, and death, particularly in vulnerable groups. {{Disease_Situation_Stats}}
+
+**Part 4: Prediction Task**
+Based on the demographic background, policy timeline, and disease severity described above, predict the probability of visitation changes for four different poi types including Restaurnat & Bars, Retail, Arts and Entertainment, and Educational Settings compare to normal.
+
+**Part 5: Chain of Thought**
+Before giving your final prediction, you must reason step by step:
+1. **Policy compliance reasoning**: First, explicitly consider your personal information include your gender, age, race, education level, and income. Based on your personal information carefully decide whether you (as the resident) would comply with the policies described in Part 2 (e.g., the pandemic declaration, nationwide emergency, and travel bans). Think about how these policies might affect your travel behavior and willingness to visit four different poi types including Restaurnat & Bars, Retail, Arts and Entertainment, and Educational Settings. If there are no policies published in Part 2, consider the confirmed cases count and death count in the state and United States and think whether these numbers might affect your travel behavior and willingness to visit four different poi types. If the confirmed cases count and death count is relatively small, do not let the pandemic influence your decision too much but still consider some risk.
+2. Stay at home policy is not a mandatory lockdown. You are not welded in your home. You are allowed to go out for groceries, medicine, and solitary exercise.
+3. **Final decision**: On the basis of that reasoning, state your final decision and then output the probability distribution.
+
+**Part 6: Output Format**
+The output should contain two sections for each of the poi types:
+1. **Reasoning** (your chain of thought as described in Part 5, including policy compliance reasoning and final decision).
+2. **Number output**: A number indicate your percentage change of visitation. 
+
+If the visitation tend to increase around 15% compare to normal, the percentage number should be positive. (Ex: 0.15)
+If the visitation tend to decrease around 16% compare to normal, the percentage number should be negative. (Ex: -0.16)
+
+**Example Output Format:**
+{
+    "{poi_type_1}_reasoning": [Your step-by-step reasoning about whether to comply with the policy, followed by your final decision.]
+    "{poi_type_1}_change": 0.15
+    "{poi_type_2}_reasoning": [Your step-by-step reasoning about whether to comply with the policy, followed by your final decision.]
+    "{poi_type_2}_change": 0.10
+    "{poi_type_3}_reasoning": [Your step-by-step reasoning about whether to comply with the policy, followed by your final decision.]
+    "{poi_type_3}_change": 0.25
+    "{poi_type_4}_reasoning": [Your step-by-step reasoning about whether to comply with the policy, followed by your final decision.]
+    "{poi_type_4}_change": 0.02
+}

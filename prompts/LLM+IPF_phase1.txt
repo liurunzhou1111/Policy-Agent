@@ -1,0 +1,84 @@
+You are a statistical analyst specializing in demographic data modeling for Census Block Groups (CBGs).
+
+## Context
+You are given demographic data from a CBG with the following six variables:
+- race: racial composition of the population
+- education: education level distribution
+- household_income: household income level distribution
+- gender: gender distribution
+- age: age group distribution (adults 21+ only)
+- occupation: occupation type distribution
+
+## Marginal Distributions (raw population counts from census data)
+{marginals}
+
+## Available Joint Distributions (cross-tabulated counts)
+{joints}
+
+## Task
+Based on the variable semantics and statistical structure visible in the distributions above, identify the TOP 5 most important joint dependency relationships that should be modeled when generating a synthetic population. Rank them from most important (strongest real-world dependency) to least important.
+
+Guidelines:
+1. Each dependency subset can contain 2, 3, or even more variables that should be jointly modeled (e.g., ["gender", "age"], ["education", "household_income", "occupation"]).
+2. A variable MAY appear in multiple dependency subsets if it participates in several important relationships (e.g., "gender" can appear in both ["gender", "age"] and ["gender", "occupation"]).
+3. Use the available joint distributions as direct evidence of dependency: if the conditional distribution of one variable changes substantially across categories of another, they are dependent.
+4. Variables that share known real-world relationships should be grouped together (e.g., gender with age, gender with occupation, education with income and occupation).
+5. Rank the 5 subsets by importance: the strongest, most well-established demographic dependencies first.
+6. Do NOT perform any computation — reason qualitatively about which variables are likely dependent.
+7. For dependency subsets that DO NOT have a matching entry in the "Available Joint Distributions" above, you MUST provide an approximate joint distribution table in the "approximate_joints" field. Estimate coarse population counts that are consistent with the marginal totals and real-world knowledge. Mark your confidence level (high / medium / low).
+
+Output ONLY a valid JSON object in the following format (no other text, no explanation):
+{{
+  "dependency_subsets": [
+    ["race", "occupation"],
+    ["age", "occupation"],
+    ["education", "household_income"],
+    ["education", "household_income", "occupation"],
+    ["race", "household_income"]
+  ],
+  "approximate_joints": {{
+    "education_x_household_income": {{
+      "distribution": {{
+        "Associate's Degree & Low Income": 80,
+        "Associate's Degree & Medium Income": 60,
+        "Associate's Degree & High Income": 20,
+        "Bachelor's Degree & Low Income": 50,
+        "Bachelor's Degree & Medium Income": 120,
+        "Bachelor's Degree & High Income": 100
+      }},
+      "confidence": "high"
+    }},
+    "education_x_household_income_x_occupation": {{
+      "distribution": {{
+        "Bachelor's Degree & High Income & Management": 40,
+        "Bachelor's Degree & Medium Income & Office and Administrative Support": 25,
+        "Master's Degree & High Income & Healthcare Practitioners and Technical": 15,
+        "Associate's Degree & Low Income & Food Preparation and Serving": 20
+      }},
+      "confidence": "medium"
+    }},
+    "race_x_household_income": {{
+      "distribution": {{
+        "White & Low Income": 100,
+        "White & Medium Income": 200,
+        "White & High Income": 150,
+        "Black & Low Income": 80,
+        "Black & Medium Income": 40,
+        "Black & High Income": 20
+      }},
+      "confidence": "medium"
+    }}
+  }}
+}}
+
+Rules for approximate_joints:
+- Only include entries for dependency subsets WITHOUT a matching available joint distribution above.
+- If ALL dependency subsets already have matching available joint distributions, set "approximate_joints" to {{}}.
+- Use the EXACT category names from the marginal distributions.
+- Combine category names with " & " separator (e.g., "Bachelor's Degree & High Income & Management").
+- The joint name key MUST use "var1_x_var2" or "var1_x_var2_x_var3" format, using the same variable order as in the dependency_subsets array.
+- For joints with 3+ variables, you do NOT need to enumerate every possible combination — include only the most common or important combinations that capture the key dependency patterns. Aim for 5-15 entries per joint.
+- Counts should be rough estimates consistent with the provided marginals and common-sense demographic knowledge.
+- Confidence: "high" if the relationship is well-known, "medium" if plausible, "low" if speculative.
+
+Valid variable names: race, education, household_income, gender, age, occupation

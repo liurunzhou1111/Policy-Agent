@@ -1,0 +1,130 @@
+{
+  "simulation": {
+    "num_agents": 300,
+    "random_seed": 42,
+    "dropout_rate": 0.3,
+    "simulation_dates": [
+      "2020-03-02",
+      "2020-03-09",
+      "2020-03-16",
+      "2020-03-23",
+      "2020-03-30"
+    ],
+    "baseline_dates": [
+      "2020-01-13",
+      "2020-01-20",
+      "2020-01-27",
+      "2020-02-03"
+    ],
+    "agent_file_template": "llm_ipf_agents_result_{model}_modified_n300.jsonl",
+    "news_cutoff": "2020-03-16",
+    "news_items": [
+      "After more than 100,000+ cases in 114 countries and 4,000+ deaths, the WHO declares the disease as a pandemic.",
+      "The Administration declares a nationwide emergency and issues an additional travel ban on non-U.S. citizens traveling from 20+ European countries due to the pandemic."
+    ]
+  },
+
+  "cities": [
+    {
+      "name": "boston",
+      "display_name": "Boston",
+      "state_abbr": "MA",
+      "total_population": 640529,
+      "cbg_prefix": "25025",
+      "introduction": "Boston is a highly educated, diverse, affluent, historic, coastal city with large student population, liberal Democratic electorate within strongly progressive Massachusetts political environment."
+    },
+    {
+      "name": "denver",
+      "display_name": "Denver",
+      "state_abbr": "CO",
+      "total_population": 715522,
+      "cbg_prefix": "08031",
+      "introduction": "Denver is a young, educated, fast-growing, predominantly White city with rising Hispanic population, outdoor-oriented culture, leaning Democratic within increasingly progressive Colorado political environment."
+    },
+    {
+      "name": "san_antonio",
+      "display_name": "San Antonio",
+      "state_abbr": "TX",
+      "total_population": 1752598,
+      "cbg_prefix": "48029",
+      "introduction": "San Antonio is a majority-Hispanic, rapidly growing, culturally Mexican-American city with a young population, generally leaning Democratic within the broader conservative Republican state of Texas."
+    }
+  ],
+
+  "models": {
+    "simulation_models": [
+      "GPT-4.1",
+      "Gemini-2.5-Pro",
+      "Grok-4.1-Fast-Reasoning"
+    ],
+    "evaluation_models": [
+      "GPT-4.1",
+      "Gemini-2.5-Pro",
+      "Grok-4.1-Fast-Reasoning",
+      "GPT-4.1+Gemini-2.5-Pro+Grok-4.1-Fast-Reasoning"
+    ],
+    "registry": {
+      "GPT-4.1": {
+        "type": "gpt",
+        "api_model_name": "gpt-4.1",
+        "temperature": 1,
+        "max_tokens": 1024
+      },
+      "Gemini-2.5-Pro": {
+        "type": "gemini",
+        "api_model_name": "gemini-2.5-pro",
+        "temperature": 2,
+        "max_tokens": 4096,
+        "enable_thinking": true
+      },
+      "Grok-4.1-Fast-Reasoning": {
+        "type": "grok",
+        "api_model_name": "grok-4-1-fast-reasoning",
+        "temperature": 1,
+        "max_tokens": 4096
+      }
+    }
+  },
+
+  "poi": {
+    "canonical_to_display": {
+      "Restaurants_and_Bars":   "Restaurants and Bars",
+      "Retail":                 "Retail",
+      "Arts_and_Entertainment": "Arts and Entertainment"
+    },
+    "pred_to_csv": {
+      "Restaurants_and_Bars":   "Restaurants & Bars",
+      "Retail":                 "Retail",
+      "Arts_and_Entertainment": "Arts & Entertainment"
+    }
+  },
+
+  "evaluation": {
+    "city_ylim": [-1.5, 2.0],
+    "city_ylim_overrides": {
+      "san_antonio": [-1.5, 1.5]
+    },
+    "read_max_retries": 3,
+    "read_retry_sleep": 0.5
+  },
+
+  "state_names": {
+    "AL": "Alabama",       "AK": "Alaska",         "AZ": "Arizona",
+    "AR": "Arkansas",      "CA": "California",      "CO": "Colorado",
+    "CT": "Connecticut",   "DC": "District of Columbia", "DE": "Delaware",
+    "FL": "Florida",       "GA": "Georgia",         "HI": "Hawaii",
+    "ID": "Idaho",         "IL": "Illinois",        "IN": "Indiana",
+    "IA": "Iowa",          "KS": "Kansas",          "KY": "Kentucky",
+    "LA": "Louisiana",     "ME": "Maine",           "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan",        "MN": "Minnesota",
+    "MS": "Mississippi",   "MO": "Missouri",        "MT": "Montana",
+    "NE": "Nebraska",      "NV": "Nevada",          "NH": "New Hampshire",
+    "NJ": "New Jersey",    "NM": "New Mexico",      "NY": "New York",
+    "NC": "North Carolina","ND": "North Dakota",    "OH": "Ohio",
+    "OK": "Oklahoma",      "OR": "Oregon",          "PA": "Pennsylvania",
+    "RI": "Rhode Island",  "SC": "South Carolina",  "SD": "South Dakota",
+    "TN": "Tennessee",     "TX": "Texas",           "UT": "Utah",
+    "VT": "Vermont",       "VA": "Virginia",        "WA": "Washington",
+    "WV": "West Virginia", "WI": "Wisconsin",       "WY": "Wyoming"
+  }
+}

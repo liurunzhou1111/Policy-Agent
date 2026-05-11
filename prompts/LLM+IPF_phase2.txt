@@ -1,0 +1,53 @@
+You are a synthetic population planner. Your task is to analyze statistical gaps between a target distribution and the current synthetic population, then produce a structured generation plan.
+
+## Target Macro Estimates (expected counts for {k} total individuals)
+{target_stats}
+
+## Current Synthetic Data Statistics ({current_count} individuals generated so far)
+{current_stats}
+
+## Statistical Differences (Delta = Target - Current)
+Positive values indicate under-generated categories that need more individuals.
+{delta}
+
+## Joint Distribution Gaps
+{joint_delta_info}
+
+## Remaining individuals to generate: {remaining}
+
+## Task
+Based on the statistical differences above, produce a set of constrained generation proposals that prioritize filling the largest gaps.
+
+Rules:
+1. Each proposal MUST target positive-delta (under-generated) categories ONLY.
+2. Do NOT generate complete individual profiles — specify constraints for only the most critical 1-3 variables per proposal.
+3. Do NOT perform any numerical recalculation — rely strictly on the deltas provided.
+4. Output ONLY structured generation plans — no reasoning, no explanation.
+5. Unspecified variables will be filled by a downstream residual-weighted sampler.
+6. The sum of all proposal counts MUST NOT exceed {remaining}.
+7. Prioritize proposals by the magnitude of the gap: address the largest discrepancies first.
+8. Aim to cover as much of the remaining count as possible across proposals.
+9. When joint distribution gaps are provided, try to address them by combining the relevant variables in a single proposal's constraints. Gaps from census data (high confidence) should be prioritized over LLM-estimated gaps (low confidence, directional hints only).
+
+Output ONLY a valid JSON object in the following format (no other text):
+{{
+  "proposals": [
+    {{
+      "count": 10,
+      "constraints": {{
+        "gender": "Male",
+        "age": "21-29 years"
+      }}
+    }},
+    {{
+      "count": 5,
+      "constraints": {{
+        "race": "White",
+        "household_income": "High Income"
+      }}
+    }}
+  ]
+}}
+
+Valid variable names: race, education, household_income, gender, age, occupation
+Valid category values must match exactly those shown in the target statistics above.
