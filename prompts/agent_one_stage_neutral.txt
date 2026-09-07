@@ -1,0 +1,28 @@
+Assume you are a resident in **{{City_Name}}**, **{{State}}**. **{{City_State_Introduction}}** You need to decide your travel plan for next week based on information given below.
+
+**Part 1: Demographic Context**
+You are living in the city of **{{City_Name}}**. The total population of this city is **{{Total_Population}}**. You are a **{{Age}}** **{{Race}}** **{{Gender}}**, with **{{Education}}** degree, and in a **{{Household_Income}}** household. You occupation is in **{{Occupation}}**.
+
+**Part 2: Local Situation Timeline**
+{{Policy_Timeline}}
+
+**Part 3: Disease Situation**
+A new infectious disease, temporarily designated as "Novus-Pathogen," is currently active in the region. This disease presents similarly to Influenza (the flu). It is transmitted primarily through respiratory droplets released when an infected person coughs, sneezes, or talks, as well as through contact with contaminated surfaces. Symptoms include fever, cough, sore throat, runny or stuffy nose, muscle or body aches, headaches, and fatigue. While many cases are mild, the outcome can be severe, potentially leading to viral pneumonia, respiratory failure, and death, particularly in vulnerable groups. {{Disease_Situation_Stats}}
+
+**Part 4: Prediction Task**
+Given your own circumstances and the information above, report what you would actually do next week: your likely percentage change of visitation for four different poi types including Restaurnat & Bars, Retail, Arts and Entertainment, and Educational Settings compare to normal. Answer as the person described in Part 1 would actually behave next week.
+
+**Part 5: Output Format**
+Output only the JSON object shown below, containing one number for each of the four poi types. Do not include any other text.
+
+Each number indicates your percentage change of visitation.
+If the visitation tend to increase around 15% compare to normal, the percentage number should be positive. (Ex: 0.15)
+If the visitation tend to decrease around 16% compare to normal, the percentage number should be negative. (Ex: -0.16)
+
+**Output Format:**
+{
+    "Restaurants_and_Bars_change": <number>,
+    "Retail_change": <number>,
+    "Arts_and_Entertainment_change": <number>,
+    "Educational_Settings_change": <number>
+}

@@ -1,0 +1,58 @@
+You are simulating the city of **{{City_Name}}**, **{{State}}**, as a whole. Your task is to produce the city-level distribution of visitation change for the coming week, given the conditions described below.
+
+You are not playing the part of any one resident. You are simulating the city itself, and your answer is a distribution over the whole city.
+
+**Part 1: City Background**
+**{{City_State_Introduction}}**
+
+The total population of **{{City_Name}}** is **{{Total_Population}}**. Its population composition is as follows:
+{{Demographic_Profile}}
+
+**Part 2: Policy Level**
+{{Policy_Timeline}}
+
+**Part 3: Disease Situation**
+A new infectious disease, temporarily designated as "Novus-Pathogen," is currently active in the region. This disease presents similarly to Influenza (the flu). It is transmitted primarily through respiratory droplets released when an infected person coughs, sneezes, or talks, as well as through contact with contaminated surfaces. Symptoms include fever, cough, sore throat, runny or stuffy nose, muscle or body aches, headaches, and fatigue. While many cases are mild, the outcome can be severe, potentially leading to viral pneumonia, respiratory failure, and death, particularly in vulnerable groups. {{Disease_Situation_Stats}}
+
+**Part 4: Prediction Task**
+For each place-of-interest (POI) type listed below, predict the **distribution of visitation change across {{City_Name}} for next week**, measured relative to that POI type's normal pre-outbreak level (its typical week before this disease appeared in the region):
+{{POI_List}}
+
+A city does not respond as one block. Some parts of the city pull back sharply while others carry on close to normal, driven by the differences in occupation, income, education, age, and household circumstance set out in Part 1, and by how exposed each part of the city is to the measures in Part 2. The distribution you report is exactly this internal variation: **the spread of visitation change across the city**, with the median describing the typical part of the city and the quartiles and whiskers describing how far the rest of the city falls on either side of it.
+
+Report each distribution as the five standard box-plot statistics, so that your answer can be drawn directly as a box plot:
+
+- **whisker_low** — the lower whisker: the lowest value that is still *not* an outlier, i.e. the smallest value lying within 1.5 x IQR below q25.
+- **q25** — the 25th percentile (the bottom of the box).
+- **median** — the 50th percentile (the line inside the box).
+- **q75** — the 75th percentile (the top of the box).
+- **whisker_high** — the upper whisker: the highest value that is still *not* an outlier, i.e. the largest value lying within 1.5 x IQR above q75.
+
+where IQR = q75 - q25. Exclude outliers beyond the whiskers; do not report the absolute minimum and maximum of the city.
+
+The five values must be ordered: whisker_low <= q25 <= median <= q75 <= whisker_high.
+
+**Units.** Every value is a fractional change relative to normal, not a percentage and not an absolute visit count:
+- A **decrease** of about 45% is written **-0.45**.
+- An **increase** of about 15% is written **0.15**.
+- **0.0** means visitation is unchanged from normal.
+- **-1.0** is the floor: it means visits stopped completely. No value may be below -1.0.
+
+**Part 5: Chain of Thought**
+Reason step by step before giving each set of five numbers:
+1. **City-level response**: Read Part 2 and Part 3 together. How far has the situation actually progressed for this city as of now — is this an early week where the disease is still an abstract, distant threat, or has it become a concrete local emergency? How strong and how binding are the measures currently in force, and how much of the city's behavior would they realistically move?
+2. **Center**: Decide where the typical part of the city lands for this POI type. This is your median.
+3. **Spread**: Decide how much the city disagrees with itself. Use Part 1 concretely: which occupations can withdraw and which must keep showing up, which households can absorb lost work and which cannot, which age groups face the most personal risk. A city that is uniformly affected has a narrow box; a city split between people who can pull back and people who cannot has a wide one. Set q25 and q75 to bracket the middle half of the city, then set the whiskers to cover the ordinary rest of it, excluding true outliers.
+4. **Differentiate across POI types**: The same city-level response does not move every POI type equally. Weigh how necessary each POI type is, how easily it is substituted (delivery, online purchase, at-home alternatives), how crowded and enclosed it typically is, and whether it is directly named by any measure in Part 2. The five numbers should differ across POI types wherever your reasoning says they should, in center and in spread alike.
+5. **Final numbers**: State the five statistics for each POI type, checking that they are correctly ordered and that none falls below -1.0.
+
+Do not anchor on round or symmetric answers, and do not reuse one POI type's numbers for another. An early week with little local disease activity and no binding measures should look close to normal; a week with a severe local outbreak and strong measures in force should not.
+
+**Part 6: Output Format**
+For each POI type, output six fields: your reasoning, followed by the five box-plot statistics.
+
+Output ONLY a valid JSON object, with no other text and no code fences, in this shape:
+
+{{POI_Output_Example}}
+
+Replace each reasoning string with your own chain of thought from Part 5 for that POI type. The numbers shown above are arbitrary formatting placeholders — they are NOT suggested answers, and reusing them would be wrong. Decide every value from your own reasoning.

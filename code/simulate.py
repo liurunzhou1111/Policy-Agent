@@ -1,5 +1,5 @@
 """
-City-level LLM pandemic simulation — modified (no-CBG) version with LLM+IPF sampling.
+City-level LLM pandemic simulation — ONE-STAGE (no-CBG) version with LLM+IPF sampling.
 
 For each city this script:
   1. Reads city demographics from data/city_data/{city}/cbg_detail_info.csv.
@@ -12,7 +12,7 @@ For each city this script:
 All tunable parameters are loaded from data/config.json.
 
 Output per model:
-  results/{city}/llm_ipf_agents_result_{model}_modified_n300.jsonl
+  results/{city}/{model}/llm_ipf_agents_result_{model}_onestage_n300.jsonl
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ POLICY_DIR     = REPO_ROOT / "data" / "policy_data"
 RESULTS_DIR    = REPO_ROOT / "results"
 PROMPTS_DIR    = REPO_ROOT / "prompts"
 
-PROMPT_TEMPLATE_PATH = PROMPTS_DIR / "advanced_prompt_num_nocbg_allpoi.txt"
+PROMPT_TEMPLATE_PATH = PROMPTS_DIR / "agent_one_stage.txt"
 CONFIRMED_FILE       = PANDEMIC_DIR / "aggregate_confirmed.csv"
 DEATHS_FILE          = PANDEMIC_DIR / "aggregate_deaths.csv"
 
@@ -146,6 +146,36 @@ def generate_and_save_agents(city_cfg: dict) -> list[dict]:
 # Pandemic / policy data helpers
 # =============================================================================
 
+def _lookup_state_row(df: pd.DataFrame, state_abbr: str, fname: str) -> pd.Series:
+    """
+    Pull one state's row from an aggregate CSV.  The shipped files are indexed by
+    two-letter abbreviation ('MA'), but tolerate a full-name index too.
+    """
+    if state_abbr in df.index:
+        return df.loc[state_abbr]
+    state_full = STATE_ABBR_TO_FULL_NAME.get(state_abbr, state_abbr)
+    if state_full in df.index:
+        return df.loc[state_full]
+    raise KeyError(
+        f"State '{state_abbr}' / '{state_full}' not in {fname} "
+        f"(index: {list(df.index)[:10]})"
+    )
+
+
+def _national_row(df: pd.DataFrame) -> pd.Series:
+    """
+    National totals.  The aggregate CSVs carry an explicit 'US' row — use it.
+    Only fall back to summing the state rows when no such row exists, and never
+    include the 'US' row in that sum (the shipped files hold only six states, so
+    summing them is not a national total either way).
+    """
+    for key in ("US", "United States"):
+        if key in df.index:
+            return df.loc[key]
+    return df.drop(index=[i for i in df.index if str(i).upper() in {"US", "UNITED STATES"}],
+                   errors="ignore").sum(axis=0)
+
+
 def load_pandemic_data(state_abbr: str):
     """
     Load state and US pandemic rows from the aggregate CSVs.
@@ -154,15 +184,11 @@ def load_pandemic_data(state_abbr: str):
     confirmed_df = pd.read_csv(CONFIRMED_FILE, index_col=0)
     deaths_df    = pd.read_csv(DEATHS_FILE,    index_col=0)
 
-    state_full = STATE_ABBR_TO_FULL_NAME.get(state_abbr, state_abbr)
-    if state_full not in confirmed_df.index:
-        raise KeyError(f"State '{state_full}' not in {CONFIRMED_FILE.name}")
-
     return (
-        confirmed_df.loc[state_full],
-        deaths_df.loc[state_full],
-        confirmed_df.sum(axis=0),
-        deaths_df.sum(axis=0),
+        _lookup_state_row(confirmed_df, state_abbr, CONFIRMED_FILE.name),
+        _lookup_state_row(deaths_df,    state_abbr, DEATHS_FILE.name),
+        _national_row(confirmed_df),
+        _national_row(deaths_df),
     )
 
 
@@ -197,10 +223,7 @@ def get_policy_text(policy_df: pd.DataFrame, simulation_date: str) -> str:
 # Prompt construction
 # =============================================================================
 
-def build_prompt(
-    template: str,
-    city_cfg: dict,
-    individual: dict,
+def build_context(
     simulation_date: str,
     policy_detail_text: str,
     state_confirmed: int,
@@ -208,16 +231,15 @@ def build_prompt(
     us_confirmed: int,
     us_deaths: int,
     rng: random.Random,
-) -> str:
+) -> dict:
     """
-    Fill the prompt template.  A random fraction (DROPOUT_RATE) of context items
-    (policy paragraphs, WHO/federal news, disease-stats sentences) are dropped to
-    introduce per-agent diversity.
-    """
-    state_full       = STATE_ABBR_TO_FULL_NAME.get(city_cfg["state_abbr"], city_cfg["state_abbr"])
-    occupation_subcat = individual.get("occupation", "")
-    occupation_major  = OCCUPATION_TO_MAJOR_CATEGORY.get(occupation_subcat, occupation_subcat)
+    Apply the DROPOUT_RATE draw over policy paragraphs, WHO/federal news and
+    disease-stat sentences, and return the resulting text blocks plus the counts.
 
+    Called once per agent × date, in agent order, from the run's shared RNG —
+    the dropped items differ per agent, which is what gives the agent pool its
+    diversity of context.
+    """
     policy_items  = [s.strip() for s in policy_detail_text.split("\n\n") if s.strip()]
     sim_dt        = datetime.strptime(simulation_date, "%Y-%m-%d")
     news_items    = list(_NEWS_ITEMS) if sim_dt >= _NEWS_CUTOFF else []
@@ -241,8 +263,20 @@ def build_prompt(
     kept_news    = [x for i, x in enumerate(news_items,    start=n_p)  if i not in drop_set]
     kept_disease = [x for i, x in enumerate(disease_items, start=n_p + n_n) if i not in drop_set]
 
-    part2_text   = "\n\n".join(kept_policy + kept_news) or "No policy recorded for this date."
-    disease_text = " ".join(kept_disease)
+    return {
+        "policy_timeline": "\n\n".join(kept_policy + kept_news)
+                           or "No policy recorded for this date.",
+        "disease_stats":   " ".join(kept_disease),
+        "n_context_items": len(all_items),
+        "n_dropped":       len(drop_set),
+    }
+
+
+def build_prompt(template: str, city_cfg: dict, individual: dict, context: dict) -> str:
+    """Fill the prompt template for one agent × date from a built context."""
+    state_full        = STATE_ABBR_TO_FULL_NAME.get(city_cfg["state_abbr"], city_cfg["state_abbr"])
+    occupation_subcat = individual.get("occupation", "")
+    occupation_major  = OCCUPATION_TO_MAJOR_CATEGORY.get(occupation_subcat, occupation_subcat)
 
     prompt = template
     prompt = prompt.replace("**{{City_Name}}**",               city_cfg["display_name"])
@@ -255,8 +289,10 @@ def build_prompt(
     prompt = prompt.replace("**{{Education}}**",               individual.get("education",           "Unknown"))
     prompt = prompt.replace("**{{Household_Income}}**",        individual.get("household_income",    "Unknown"))
     prompt = prompt.replace("**{{Occupation}}**",              occupation_major)
-    prompt = prompt.replace("{{Policy_Timeline}}",             part2_text)
-    prompt = prompt.replace("{{Disease_Situation_Stats}}",     disease_text)
+    prompt = prompt.replace("{{Policy_Timeline}}",             context["policy_timeline"])
+    prompt = prompt.replace("{{Disease_Situation_Stats}}",     context["disease_stats"])
+    # City_Name also appears unbolded inside Part 1 of the template.
+    prompt = prompt.replace("{{City_Name}}",                   city_cfg["display_name"])
     return prompt
 
 
@@ -325,10 +361,7 @@ def simulate_agent(
     occupation_subcat = individual.get("occupation", "")
     occupation_major  = OCCUPATION_TO_MAJOR_CATEGORY.get(occupation_subcat, occupation_subcat)
 
-    prompt = build_prompt(
-        template           = prompt_template,
-        city_cfg           = city_cfg,
-        individual         = individual,
+    context = build_context(
         simulation_date    = simulation_date,
         policy_detail_text = policy_detail_text,
         state_confirmed    = state_confirmed,
@@ -337,6 +370,7 @@ def simulate_agent(
         us_deaths          = us_deaths,
         rng                = prompt_rng,
     )
+    prompt = build_prompt(prompt_template, city_cfg, individual, context)
 
     response          = model.call(prompt)
     parsed            = _parse_llm_json(response) if response else None
@@ -348,6 +382,7 @@ def simulate_agent(
         "simulation_date": simulation_date,
         "agent_index":     agent_index,
         "sampling_method": "llm_ipf",
+        "pipeline":        "one_stage",
         "individual_info": {
             "race":             individual.get("race",             "Unknown"),
             "gender":           individual.get("gender",           "Unknown"),
@@ -363,9 +398,17 @@ def simulate_agent(
             "us_confirmed_cases":    us_confirmed,
             "us_deaths":             us_deaths,
         },
+        "context_info": {
+            "n_context_items": context["n_context_items"],
+            "n_dropped":       context["n_dropped"],
+        },
         "response":          response,
         "parsed_prediction": parsed,
         "predicted_changes": predicted_changes,
+        # Present on every agent-level record so all pipelines share one schema.
+        # A pool generated in this run has no upstream file to point back to.
+        "source_file":          individual.get("_source_file"),
+        "original_agent_index": individual.get("_original_agent_index"),
     }
 
 
@@ -460,7 +503,7 @@ def main():
     prompt_template = PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
 
     print("=" * 70)
-    print("Policy-Agent: City-level Pandemic Simulation (LLM+IPF / modified)")
+    print("Policy-Agent: One-Stage City-level Pandemic Simulation (LLM+IPF)")
     print("=" * 70)
     print(f"Cities : {[c['display_name'] for c in CITY_LIST]}")
     print(f"Models : {MODEL_LIST}")

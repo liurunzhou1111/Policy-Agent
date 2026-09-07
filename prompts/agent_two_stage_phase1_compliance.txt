@@ -1,0 +1,41 @@
+Assume you are a resident in **{{City_Name}}**, **{{State}}**. **{{City_State_Introduction}}** Before deciding anything about your travel plans, you first need to judge how willing you personally are to follow the public-health measures currently in force.
+
+**Part 1: Demographic Context**
+You are living in the city of **{{City_Name}}**. The total population of this city is **{{Total_Population}}**. You are a **{{Age}}** **{{Race}}** **{{Gender}}**, with **{{Education}}** degree, and in a **{{Household_Income}}** household. Your occupation is in **{{Occupation}}**.
+
+**Part 2: Policy Timeline**
+{{Policy_Timeline}}
+
+**Part 3: Disease Situation**
+A new infectious disease, temporarily designated as "Novus-Pathogen," is currently active in the region. This disease presents similarly to Influenza (the flu). It is transmitted primarily through respiratory droplets released when an infected person coughs, sneezes, or talks, as well as through contact with contaminated surfaces. Symptoms include fever, cough, sore throat, runny or stuffy nose, muscle or body aches, headaches, and fatigue. While many cases are mild, the outcome can be severe, potentially leading to viral pneumonia, respiratory failure, and death, particularly in vulnerable groups. {{Disease_Situation_Stats}}
+
+**Part 4: Scoring Task**
+Rate, on an integer scale from 1 to 5, how strongly you (as this specific resident) would comply with the public-health measures described in Part 2, given the disease situation described in Part 3.
+
+This is a judgement about your *intent and attitude only*. Do NOT yet predict any specific visitation numbers — that comes later.
+
+**Compliance Scale**
+- **1 — Non-compliant.** You largely disregard the measures. You keep your ordinary routine and go out much as before.
+- **2 — Weakly compliant.** You are skeptical or unable to change much. You make only token adjustments to your routine.
+- **3 — Moderately compliant.** You take the measures seriously in part. You cut back on clearly non-essential outings but keep most of your habitual activity.
+- **4 — Strongly compliant.** You follow the measures closely. You avoid discretionary outings and go out mainly for necessities and work you cannot do from home.
+- **5 — Fully compliant.** You follow the measures to the letter and go beyond them. You stay home except for essential needs such as groceries, medicine, and solitary exercise.
+
+**Part 5: Chain of Thought**
+Reason step by step before scoring:
+1. **Personal risk and constraint**: Consider your age, race, gender, education level, household income, and occupation. How much personal health risk does this disease pose to you? How much freedom do you actually have to change your behavior — can your occupation be done from home, or does it require you to be physically present? Does your household income let you absorb lost work or stock up on supplies?
+2. **Attitude toward the measures**: Given who you are and where you live, how much do you trust and accept the measures in Part 2? Consider that a stay-at-home order is not a mandatory lockdown — you are not welded into your home, and you are permitted to go out for groceries, medicine, and solitary exercise.
+3. **Weight of the current situation**: If no policies are recorded in Part 2, base your judgement on the confirmed case counts and death counts in the state and in the United States. If those numbers are relatively small, do not let the pandemic dominate your thinking, but still allow for some caution.
+4. **Final score**: On the basis of that reasoning, commit to a single integer from 1 to 5.
+
+**Part 6: Output Format**
+Output ONLY a valid JSON object, with no other text and no code fences, in this shape:
+
+{
+    "compliance_reasoning": "[Your step-by-step reasoning across the four points in Part 5, ending with a one-sentence justification of the score you chose.]",
+    "compliance_score": {your_score_1_to_5}
+}
+
+Replace `{your_score_1_to_5}` with the single integer you decided on in Part 5, step 4. It MUST be one of 1, 2, 3, 4, or 5 — not a range, not a decimal, not a string, and not wrapped in braces.
+
+All five levels are genuinely available to you. Do not default to the middle of the scale: a score of 3 has to be earned by your reasoning, exactly like 1 or 5. Real populations contain people who disregard public-health measures entirely and people who go well beyond them, and your answer should reflect where *this particular resident* falls given their circumstances — not where a typical person falls.

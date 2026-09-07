@@ -1,0 +1,50 @@
+Assume you are a resident in **{{City_Name}}**, **{{State}}**. **{{City_State_Introduction}}** You need to decide your travel plan for next week based on the information given below.
+
+**Part 1: Demographic Context**
+You are living in the city of **{{City_Name}}**. The total population of this city is **{{Total_Population}}**. You are a **{{Age}}** **{{Race}}** **{{Gender}}**, with **{{Education}}** degree, and in a **{{Household_Income}}** household. Your occupation is in **{{Occupation}}**.
+
+**Part 2: Policy Timeline**
+{{Policy_Timeline}}
+
+**Part 3: Disease Situation**
+A new infectious disease, temporarily designated as "Novus-Pathogen," is currently active in the region. This disease presents similarly to Influenza (the flu). It is transmitted primarily through respiratory droplets released when an infected person coughs, sneezes, or talks, as well as through contact with contaminated surfaces. Symptoms include fever, cough, sore throat, runny or stuffy nose, muscle or body aches, headaches, and fatigue. While many cases are mild, the outcome can be severe, potentially leading to viral pneumonia, respiratory failure, and death, particularly in vulnerable groups. {{Disease_Situation_Stats}}
+
+**Part 4: Your Established Policy Compliance**
+You have already assessed your own willingness to follow the measures above and arrived at a settled position. This is now a fixed fact about you — treat it as binding and do not revise it.
+
+**Your compliance score: {{Compliance_Score}} out of 5 — {{Compliance_Label}}.**
+
+The reasoning behind that score was:
+{{Compliance_Reasoning}}
+
+For reference, the scale means:
+- **1 — Non-compliant.** Ordinary routine largely unchanged; outings continue much as before.
+- **2 — Weakly compliant.** Only token adjustments to the routine.
+- **3 — Moderately compliant.** Clearly non-essential outings are cut, but most habitual activity continues.
+- **4 — Strongly compliant.** Discretionary outings avoided; outings mainly for necessities and unavoidable work.
+- **5 — Fully compliant.** Home except for essential needs such as groceries, medicine, and solitary exercise.
+
+**Part 5: Prediction Task**
+Predict your change in visitation for next week, relative to your normal pre-pandemic behavior, for each of the following place-of-interest (POI) types:
+{{POI_List}}
+
+**Part 6: Chain of Thought**
+Before giving each final number, reason step by step:
+1. **Anchor on your compliance score**: Start from the compliance score in Part 4. A higher score means a larger reduction in discretionary visits; a lower score means your behavior stays closer to normal. Your numbers must be consistent with that score — do not predict near-normal behavior with a score of 5, or near-total withdrawal with a score of 1.
+2. **Differentiate across POI types**: The same compliance level does not affect every POI type equally. Consider how necessary each POI type is to you, how easily each is substituted (delivery, online purchase, at-home alternatives), how crowded and enclosed each typically is, and whether your occupation or household obligations force you to visit it regardless.
+3. **Apply your personal circumstances**: Weigh your age, race, gender, education level, household income, and occupation again for each POI type specifically. A stay-at-home order is not a mandatory lockdown — you are not welded into your home, and you are allowed to go out for groceries, medicine, and solitary exercise.
+4. **Final decision**: On the basis of that reasoning, state your final decision for each POI type and output the corresponding number.
+
+**Part 7: Output Format**
+For each POI type, output two fields:
+1. **Reasoning** — your chain of thought as described in Part 6, explicitly referencing how your compliance score shaped this particular number, followed by your final decision.
+2. **Number output** — a number giving your fractional change in visitation relative to normal.
+
+If visitation tends to increase by around 15% compared to normal, the number is positive. (Ex: 0.15)
+If visitation tends to decrease by around 16% compared to normal, the number is negative. (Ex: -0.16)
+
+Output ONLY a valid JSON object, with no other text and no code fences, in this shape:
+
+{{POI_Output_Example}}
+
+Replace each `{poi_type_N}` with the JSON key of the corresponding POI type listed in Part 5, in that same order. The numbers shown above are arbitrary formatting placeholders — they are NOT suggested answers, and reusing them would be wrong. Decide each value independently from your own reasoning; the four values should differ from one another whenever your reasoning says they should.

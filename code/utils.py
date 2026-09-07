@@ -567,8 +567,8 @@ def select_LLM_IPF_individuals_from_cbg(
 
     # ── load prompt templates ──────────────────────────────────────────────────
     try:
-        phase1_tpl = (PROMPTS_DIR / "LLM+IPF_phase1.txt").read_text(encoding="utf-8")
-        phase2_tpl = (PROMPTS_DIR / "LLM+IPF_phase2.txt").read_text(encoding="utf-8")
+        phase1_tpl = (PROMPTS_DIR / "llm_ipf_phase1.txt").read_text(encoding="utf-8")
+        phase2_tpl = (PROMPTS_DIR / "llm_ipf_phase2.txt").read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         print(f"[LLM+IPF] Prompt file missing ({exc}); falling back to random sampling.")
         return select_random_individuals_from_cbg(row, k=k)

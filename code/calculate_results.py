@@ -1,20 +1,28 @@
 """
-City-level accuracy pipeline — modified version.
+City-level accuracy pipeline.
 
-Reads agent predictions from:
-  results/{city}/llm_ipf_agents_result_{model}_modified_n300.jsonl
+Reads agent predictions from results/{city}/{model}/ for one simulation
+pipeline and compares them against the Advan ground truth.
 
-Computes city-level metrics (KL divergence, Wasserstein, median diff) and
-saves comparison plots. No per-CBG processing.
+  --pipeline one_stage   llm_ipf_agents_result_{model}_onestage_n300.jsonl   (default)
+  --pipeline two_stage   llm_ipf_agents_result_{model}_twostage_n{N}.jsonl
+  --pipeline neutral     llm_ipf_agents_result_{model}_neutral_n{N}.jsonl
 
-Output:
-  results/{city}/{folder}/num_result/city_level_agents/
-    {poi}_city_metrics.csv
-    {poi}_city_comparison.png
+Every output carries the pipeline in its name, so the runs never overwrite each
+other and a folder holding several of them stays readable:
+
+  results/{city}/{model_spec}/
+    all_pois_city_comparison_box_{pipeline}.png
+    {poi}_city_metrics_{pipeline}.csv     (unless --plots-only)
+
+The ground-truth patterns file is not redistributable (see README -> Data
+Availability); point --data-dir at your own copy when it is not under
+data/city_data/.
 """
 
 from __future__ import annotations
 
+import argparse
 import errno
 import json
 import sys
@@ -49,11 +57,32 @@ with open(CONFIG_PATH, encoding="utf-8") as _f:
 
 CITY_LIST           = _CFG["cities"]
 MODEL_LIST          = _CFG["models"]["evaluation_models"]
-AGENT_FILE_TEMPLATE = _CFG["simulation"]["agent_file_template"]
+NUM_AGENTS          = _CFG["simulation"]["num_agents"]
+
+# One entry per simulation pipeline: the result file it reads, and the suffix
+# every output of that run carries.  The two variant templates take {n} as well
+# as {model}; resolve_agent_file falls back to a glob when the agent count in the
+# filename is not NUM_AGENTS.
+PIPELINES = {
+    "one_stage": _CFG["simulation"]["agent_file_template"],
+    "two_stage": _CFG["simulation"].get(
+        "agent_file_template_two_stage",
+        "llm_ipf_agents_result_{model}_twostage_n{n}.jsonl"),
+    "neutral":   _CFG["simulation"].get(
+        "agent_file_template_neutral",
+        "llm_ipf_agents_result_{model}_neutral_n{n}.jsonl"),
+}
 BASELINE_DATES      = _CFG["simulation"]["baseline_dates"]
 SIMULATION_DATES    = _CFG["simulation"]["simulation_dates"]
 POI_PRED_TO_CSV     = _CFG["poi"]["pred_to_csv"]
 ALL_POI_TYPES       = list(POI_PRED_TO_CSV.keys())
+
+# The combined box plot has one slot per POI in a fixed layout, so it draws the
+# POIs config.evaluation.plot_poi_types names — three of them, matching
+# POI_FULL_LABELS / POI_POSITION_OFFSETS / COMBINED_POI_GT_FACE below.  The
+# metrics CSVs still cover every POI in config.poi.pred_to_csv.
+PLOT_POI_TYPES = _CFG["evaluation"].get(
+    "plot_poi_types", ["Restaurants_and_Bars", "Retail", "Arts_and_Entertainment"])
 
 CITY_YLIM             = tuple(_CFG["evaluation"]["city_ylim"])
 CITY_YLIM_OVERRIDES   = {k: tuple(v) for k, v in _CFG["evaluation"]["city_ylim_overrides"].items()}
@@ -78,6 +107,14 @@ WHISKER_LINEWIDTH     = 0.9
 MEDIAN_LINEWIDTH      = 1.15
 DATE_TICK_FONT_SIZE   = 14
 LEGEND_FONT_SIZE      = 14
+
+if not (len(PLOT_POI_TYPES) == len(POI_FULL_LABELS)
+        == len(POI_POSITION_OFFSETS) == len(COMBINED_POI_GT_FACE)):
+    raise ValueError(
+        f"config.evaluation.plot_poi_types has {len(PLOT_POI_TYPES)} entries but the "
+        f"box-plot layout constants define {len(POI_POSITION_OFFSETS)} slots "
+        f"(POI_FULL_LABELS / POI_POSITION_OFFSETS / COMBINED_POI_GT_FACE)."
+    )
 
 
 # =============================================================================
@@ -125,13 +162,18 @@ def load_cbg_true_changes(
     if sub.empty:
         return None
     baseline = sub[sub["DATE_STR"].isin(BASELINE_DATES)]["VISITS"].mean()
-    if baseline <= 0:
+    # A CBG with no rows on any baseline date gives an empty mean, i.e. NaN, and
+    # `NaN <= 0` is False — so this has to test for a finite baseline, not just a
+    # positive one, or every change for that CBG comes out NaN and poisons the
+    # distribution it is pooled into.
+    if not np.isfinite(baseline) or baseline <= 0:
         return None
-    return {
+    changes = {
         row["DATE_STR"]: float(row["VISITS"] / baseline - 1.0)
         for _, row in sub.iterrows()
         if row["DATE_STR"] in SIMULATION_DATES
-    } or None
+    }
+    return {d: v for d, v in changes.items() if np.isfinite(v)} or None
 
 
 def build_city_true_distribution(
@@ -161,6 +203,25 @@ def build_city_true_distribution(
 # =============================================================================
 # Agent predictions
 # =============================================================================
+
+def resolve_agent_file(model_dir: Path, model_name: str, pipeline: str) -> Path | None:
+    """
+    The result file for one model × pipeline, or None when it is not there.
+
+    The variant templates carry the agent count in the name.  NUM_AGENTS is
+    tried first; a glob then catches a run that used a different cohort size.
+    """
+    template = PIPELINES[pipeline]
+    exact    = model_dir / template.format(model=model_name, n=NUM_AGENTS)
+    if exact.exists():
+        return exact
+    if "{n}" in template:
+        pattern = template.format(model=model_name, n="*")
+        matches = sorted(model_dir.glob(pattern))
+        if matches:
+            return matches[-1]
+    return None
+
 
 def load_city_agent_predictions(
     agents_path: Path, poi_key: str
@@ -259,7 +320,7 @@ def plot_three_poi_combined_box(
     """
     # Collect dates that have both GT and prediction for at least one POI
     dates: set[str] = set()
-    for poi in ALL_POI_TYPES:
+    for poi in PLOT_POI_TYPES:
         for d in set(city_true.get(poi, {})) & set(city_pred.get(poi, {})):
             if city_true[poi][d] and city_pred[poi][d]:
                 dates.add(d)
@@ -274,7 +335,7 @@ def plot_three_poi_combined_box(
 
     for di, d in enumerate(common_dates):
         base = di * DATE_GROUP_GAP
-        for pi, poi in enumerate(ALL_POI_TYPES):
+        for pi, poi in enumerate(PLOT_POI_TYPES):
             t = city_true.get(poi, {}).get(d, [])
             p = city_pred.get(poi, {}).get(d, [])
             if not t or not p:
@@ -332,7 +393,7 @@ def plot_three_poi_combined_box(
     poi_handles = [
         Patch(facecolor=COMBINED_POI_GT_FACE[i], edgecolor=BOX_EDGE,
               linewidth=0.6, alpha=BOX_PATCH_ALPHA, label=POI_FULL_LABELS[i])
-        for i in range(len(ALL_POI_TYPES))
+        for i in range(len(PLOT_POI_TYPES))
     ]
     gt_patch  = Patch(facecolor="0.85", edgecolor=BOX_EDGE, linewidth=0.6,
                       alpha=BOX_PATCH_ALPHA, label="Ground truth")
@@ -354,13 +415,15 @@ def emit_poi_csv(
     true_by_date: dict,
     pred_by_date: dict,
     poi_key: str,
+    pipeline: str,
 ) -> None:
     """Write JS-divergence + median-diff CSV for one POI."""
     out_dir.mkdir(parents=True, exist_ok=True)
     rows = compute_city_metrics(true_by_date, pred_by_date)
     if rows:
         pd.DataFrame(rows).to_csv(
-            out_dir / f"{poi_key}_city_metrics.csv", index=False, encoding="utf-8"
+            out_dir / f"{poi_key}_city_metrics_{pipeline}.csv",
+            index=False, encoding="utf-8",
         )
 
 
@@ -368,24 +431,31 @@ def emit_poi_csv(
 # Pipeline
 # =============================================================================
 
-def process_city_model(city_cfg: dict, model_spec: str) -> None:
+def process_city_model(city_cfg: dict, model_spec: str, pipeline: str,
+                       data_dir: Path, plots_only: bool = False,
+                       gt_cbg_prefix: str | None = None) -> None:
     city_name   = city_cfg["name"]
-    cbg_prefix  = city_cfg["cbg_prefix"]
+    # Ground truth is restricted to CBGs under this prefix.  The config value is
+    # the 5-digit county FIPS — the city proper, the population the agents were
+    # sampled from.  Pass a shorter prefix (e.g. the 2-digit state code) to widen
+    # it to every CBG in the patterns file, which is what the earlier
+    # working-tree plotting script did.
+    cbg_prefix  = gt_cbg_prefix or city_cfg["cbg_prefix"]
     model_names = model_spec.split("+") if "+" in model_spec else [model_spec]
 
-    print(f"\n[INFO] {city_name} | {model_spec}")
+    print(f"\n[INFO] {city_name} | {model_spec} | {pipeline} | gt_cbg_prefix={cbg_prefix}")
 
     # Locate agent files under results/{city}/{model}/
     agent_paths: list[tuple[str, Path]] = []
     for m in model_names:
-        p = RESULTS_DIR / city_name / m / AGENT_FILE_TEMPLATE.format(model=m)
-        if not p.exists():
-            print(f"  [WARN] Missing: {p}")
+        p = resolve_agent_file(RESULTS_DIR / city_name / m, m, pipeline)
+        if p is None:
+            print(f"  [SKIP] No {pipeline} result file for {city_name} / {m}")
             return
         agent_paths.append((m, p))
 
     # Locate ground-truth patterns file
-    patterns_path = ADVAN_DATA_DIR / city_name / f"{city_name}_patterns_updated.csv"
+    patterns_path = data_dir / city_name / f"{city_name}_patterns_updated.csv"
     if not patterns_path.exists():
         print(f"  [WARN] Missing: {patterns_path}")
         return
@@ -413,23 +483,65 @@ def process_city_model(city_cfg: dict, model_spec: str) -> None:
         if not true_d or not pred_d:
             print(f"  [WARN] Skipping {poi_key} (no data)")
             continue
-        emit_poi_csv(out_base, true_d, pred_d, poi_key)
+        if not plots_only:
+            emit_poi_csv(out_base, true_d, pred_d, poi_key, pipeline)
 
     # Write one combined 3-POI boxplot
     ylim = CITY_YLIM_OVERRIDES.get(city_name, CITY_YLIM)
     plot_three_poi_combined_box(
-        out_base / "all_pois_city_comparison_box.png",
+        out_base / f"all_pois_city_comparison_box_{pipeline}.png",
         city_true, city_pred, city_name, ylim=ylim,
     )
 
     print(f"  [INFO] Done -> {out_base}")
 
 
+def parse_args():
+    p = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    p.add_argument("--pipeline", choices=list(PIPELINES), default="one_stage",
+                   help="Which simulation run to evaluate (default: one_stage). "
+                        "The choice names both the input file and every output file.")
+    p.add_argument("--cities", nargs="+", default=None,
+                   help="City names (default: every city in config.cities).")
+    p.add_argument("--models", nargs="+", default=None,
+                   help="Model specs (default: config.models.evaluation_models). "
+                        "A '+'-joined spec pools those models' predictions.")
+    p.add_argument("--data-dir", default=None,
+                   help="Directory holding {city}/{city}_patterns_updated.csv, the "
+                        "ground truth (default: data/city_data/).")
+    p.add_argument("--gt-cbg-prefix", default=None,
+                   help="Restrict the ground truth to CBGs under this prefix (default: "
+                        "each city's 5-digit county FIPS from config.cities[].cbg_prefix). "
+                        "Pass the 2-digit state code to include every CBG in the patterns "
+                        "file, as the earlier working-tree plotting script did.")
+    p.add_argument("--plots-only", action="store_true",
+                   help="Write only the box plot, not the per-POI metrics CSVs.")
+    return p.parse_args()
+
+
 def main():
-    for city in CITY_LIST:
-        for model_spec in MODEL_LIST:
-            process_city_model(city, model_spec)
-    print("\n[INFO] All city-level (modified) outputs written.")
+    args = parse_args()
+
+    if args.cities:
+        cities  = [c for c in CITY_LIST if c["name"] in args.cities]
+        missing = set(args.cities) - {c["name"] for c in cities}
+        if missing:
+            raise KeyError(f"Unknown city name(s): {sorted(missing)}")
+    else:
+        cities = CITY_LIST
+
+    models   = args.models or MODEL_LIST
+    data_dir = Path(args.data_dir).expanduser() if args.data_dir else ADVAN_DATA_DIR
+
+    print(f"[INFO] pipeline={args.pipeline}  cities={[c['name'] for c in cities]}")
+    print(f"[INFO] ground truth: {data_dir}")
+
+    for city in cities:
+        for model_spec in models:
+            process_city_model(city, model_spec, args.pipeline, data_dir,
+                               plots_only=args.plots_only,
+                               gt_cbg_prefix=args.gt_cbg_prefix)
+    print(f"\n[INFO] All {args.pipeline} city-level outputs written.")
 
 
 if __name__ == "__main__":
